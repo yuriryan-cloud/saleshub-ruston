@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from './lib/supabase';
-import type { TeamMember, Lead, Deal, Reuniao, Meta, ComissaoConfig, PerformanceSdr, PerformanceCloser, CustoComercial, DealStatus, Ligacao4com } from './types';
+import type { TeamMember, Lead, Deal, Reuniao, Meta, ComissaoConfig, PerformanceSdr, PerformanceCloser, CustoComercial, DealStatus, Ligacao4com, CloserOpportunity, CloserPayment, CloserConfig } from './types';
 // Kommo integration is handled server-side via Postgres trigger (pg_net)
 import { createCalendarEvent, deleteCalendarEvent } from './lib/googleCalendar';
 import toast from 'react-hot-toast';
@@ -54,6 +54,21 @@ interface AppState {
   fetchCustos: () => Promise<void>;
   saveCusto: (c: Partial<CustoComercial>) => Promise<void>;
   fetchLigacoes: () => Promise<void>;
+
+  // Painel do Closer
+  closerOpportunities: CloserOpportunity[];
+  closerPayments: CloserPayment[];
+  closerConfig: CloserConfig | null;
+  fetchCloserOpportunities: () => Promise<void>;
+  addOpportunity: (o: Partial<CloserOpportunity>) => Promise<CloserOpportunity | null>;
+  updateOpportunity: (id: string, updates: Partial<CloserOpportunity>) => Promise<void>;
+  deleteOpportunity: (id: string) => Promise<void>;
+  fetchCloserPayments: (mes?: string) => Promise<void>;
+  addPayment: (p: Partial<CloserPayment>) => Promise<CloserPayment | null>;
+  updatePayment: (id: string, updates: Partial<CloserPayment>) => Promise<void>;
+  deletePayment: (id: string) => Promise<void>;
+  fetchCloserConfig: () => Promise<void>;
+  updateCloserConfig: (updates: Partial<CloserConfig>) => Promise<void>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -77,6 +92,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [performanceCloser, setPerformanceCloser] = useState<PerformanceCloser[]>([]);
   const [custos, setCustos] = useState<CustoComercial[]>([]);
   const [ligacoes, setLigacoes] = useState<Ligacao4com[]>([]);
+  const [closerOpportunities, setCloserOpportunities] = useState<CloserOpportunity[]>([]);
+  const [closerPayments, setCloserPayments] = useState<CloserPayment[]>([]);
+  const [closerConfig, setCloserConfig] = useState<CloserConfig | null>(null);
 
   // ===================== AUTH =====================
   const checkSession = useCallback(async () => {
@@ -612,6 +630,76 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (data) setLigacoes(data);
   }, []);
 
+  // ===================== CLOSER: OPORTUNIDADES =====================
+  const fetchCloserOpportunities = useCallback(async () => {
+    const { data } = await supabase.from('closer_opportunities').select('*').order('created_at', { ascending: false });
+    if (data) setCloserOpportunities(data);
+  }, []);
+
+  const addOpportunity = async (o: Partial<CloserOpportunity>): Promise<CloserOpportunity | null> => {
+    const { data, error } = await supabase.from('closer_opportunities').insert(o).select('*').single();
+    if (error) { toast.error(error.message); return null; }
+    if (data) setCloserOpportunities(prev => [data, ...prev]);
+    toast.success('Oportunidade criada!');
+    return data;
+  };
+
+  const updateOpportunity = async (id: string, updates: Partial<CloserOpportunity>) => {
+    const { error } = await supabase.from('closer_opportunities').update(updates).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    setCloserOpportunities(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
+    toast.success('Oportunidade atualizada!');
+  };
+
+  const deleteOpportunity = async (id: string) => {
+    const { error } = await supabase.from('closer_opportunities').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    setCloserOpportunities(prev => prev.filter(o => o.id !== id));
+  };
+
+  // ===================== CLOSER: PAGAMENTOS =====================
+  const fetchCloserPayments = useCallback(async (mes?: string) => {
+    let query = supabase.from('closer_payments').select('*').order('created_at', { ascending: false });
+    if (mes) query = query.eq('mes', mes);
+    const { data } = await query;
+    if (data) setCloserPayments(data);
+  }, []);
+
+  const addPayment = async (p: Partial<CloserPayment>): Promise<CloserPayment | null> => {
+    const { data, error } = await supabase.from('closer_payments').insert(p).select('*').single();
+    if (error) { toast.error(error.message); return null; }
+    if (data) setCloserPayments(prev => [data, ...prev]);
+    toast.success('Pagamento registrado!');
+    return data;
+  };
+
+  const updatePayment = async (id: string, updates: Partial<CloserPayment>) => {
+    const { error } = await supabase.from('closer_payments').update(updates).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    setCloserPayments(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    toast.success('Pagamento atualizado!');
+  };
+
+  const deletePayment = async (id: string) => {
+    const { error } = await supabase.from('closer_payments').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    setCloserPayments(prev => prev.filter(p => p.id !== id));
+  };
+
+  // ===================== CLOSER: CONFIG =====================
+  const fetchCloserConfig = useCallback(async () => {
+    const { data } = await supabase.from('closer_config').select('*').limit(1).maybeSingle();
+    if (data) setCloserConfig(data);
+  }, []);
+
+  const updateCloserConfig = async (updates: Partial<CloserConfig>) => {
+    if (!closerConfig) return;
+    const { error } = await supabase.from('closer_config').update(updates).eq('id', closerConfig.id);
+    if (error) { toast.error(error.message); return; }
+    setCloserConfig(prev => prev ? { ...prev, ...updates } : prev);
+    toast.success('Configuração atualizada!');
+  };
+
   // ===================== LOAD DATA ON LOGIN =====================
   useEffect(() => {
     if (currentUser) {
@@ -625,8 +713,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fetchPerformanceCloser();
       fetchCustos();
       fetchLigacoes();
+      fetchCloserOpportunities();
+      fetchCloserPayments();
+      fetchCloserConfig();
     }
-  }, [currentUser, fetchMembers, fetchDeals, fetchLeads, fetchReunioes, fetchMetas, fetchComissoes, fetchPerformanceSdr, fetchPerformanceCloser, fetchCustos]);
+  }, [currentUser, fetchMembers, fetchDeals, fetchLeads, fetchReunioes, fetchMetas, fetchComissoes, fetchPerformanceSdr, fetchPerformanceCloser, fetchCustos, fetchCloserOpportunities, fetchCloserPayments, fetchCloserConfig]);
 
   return (
     <AppContext.Provider value={{
@@ -642,6 +733,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       fetchComissoes,
       fetchCustos, saveCusto,
       ligacoes, fetchLigacoes,
+      closerOpportunities, closerPayments, closerConfig,
+      fetchCloserOpportunities, addOpportunity, updateOpportunity, deleteOpportunity,
+      fetchCloserPayments, addPayment, updatePayment, deletePayment,
+      fetchCloserConfig, updateCloserConfig,
     }}>
       {children}
     </AppContext.Provider>

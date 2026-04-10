@@ -300,3 +300,71 @@ export const TEMPERATURA_LABELS: Record<Temperatura, string> = {
   morno: 'Morno',
   frio: 'Frio',
 };
+
+// =============================================
+// Painel do Closer - Tipos
+// =============================================
+
+export type OpportunityStatus = 'ganho' | 'perdido' | 'negociacao' | 'indicacao';
+
+export interface CloserOpportunity {
+  id: string;
+  empresa: string;
+  nome_contato?: string;
+  telefone?: string;
+  email?: string;
+  status: OpportunityStatus;
+  contexto?: string;
+  parent_id?: string;     // FK self — para indicações (lead pai)
+  parent?: CloserOpportunity;
+  children?: CloserOpportunity[]; // indicações vinculadas
+  origem?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PaymentOrigem = 'inbound' | 'outbound';
+
+export interface CloserPayment {
+  id: string;
+  mes: string;            // YYYY-MM
+  lead_name: string;
+  origem: PaymentOrigem;
+  contrato_assinado: boolean;
+  etapa?: string;
+  data_assinatura?: string;
+  data_pagamento?: string;
+  mrr: number;
+  ot: number;
+  comissao_mrr: number;
+  comissao_ot: number;
+  comissao_total: number;
+  link_call?: string;
+  link_transcricao?: string;
+  contrato_url?: string;
+  created_at: string;
+}
+
+export interface CloserConfig {
+  id: string;
+  salario_base: number;
+  vale_alimentacao: number;
+  comissao_mrr_inbound: number;   // 0.10 = 10%
+  comissao_mrr_outbound: number;  // 0.30 = 30%
+  comissao_ot_inbound: number;    // 0.05 = 5%
+  comissao_ot_outbound: number;   // 0.15 = 15%
+}
+
+export const OPPORTUNITY_STATUS_LABELS: Record<OpportunityStatus, string> = {
+  ganho: 'Ganho',
+  perdido: 'Perdido',
+  negociacao: 'Negociação',
+  indicacao: 'Indicação',
+};
+
+export const OPPORTUNITY_STATUS_COLORS: Record<OpportunityStatus, string> = {
+  ganho: 'bg-green-500/20 text-green-400',
+  perdido: 'bg-red-500/20 text-red-400',
+  negociacao: 'bg-yellow-500/20 text-yellow-400',
+  indicacao: 'bg-purple-500/20 text-purple-400',
+};

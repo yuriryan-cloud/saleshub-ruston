@@ -11,6 +11,8 @@ import { MetasView } from "./components/MetasView";
 import { EquipeView } from "./components/EquipeView";
 import { BlackBoxView } from "./components/BlackBoxView";
 import { ComissoesView } from "./components/ComissoesView";
+import { CloserOpportunitiesView } from "./components/CloserOpportunitiesView";
+import { CloserPaymentsView } from "./components/CloserPaymentsView";
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 
@@ -118,6 +120,8 @@ const MainApp: React.FC = () => {
       case "comissoes": return <ComissoesView />;
       case "blackbox": return <BlackBoxView />;
       case "equipe": return <EquipeView />;
+      case "closer-opportunities": return <CloserOpportunitiesView />;
+      case "closer-payments": return <CloserPaymentsView />;
       default: return <DashboardView />;
     }
   };
